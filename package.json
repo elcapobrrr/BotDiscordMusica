@@ -1,0 +1,13 @@
+{
+  "name": "bot_musica",
+  "version": "1.0.0",
+  "description": "Bot de música para Discord que permite reproducir audio desde YouTube en canales de voz. Desarrollado con Python, discord.py y yt-dlp.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
