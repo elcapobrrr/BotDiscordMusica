@@ -1,11 +1,2 @@
-# Ignorar ffmpeg del cómputo de lenguajes
-ffmpeg/** linguist-vendored
-
-# El README y demás .md como documentación (no cuentan)
-*.md linguist-documentation
-
-# Que package.json no cuente
-package.json linguist-detectable=false
-
-# Por si acaso hubiera HTML en algún sitio, no lo cuentes
-*.html linguist-detectable=false
+# Auto detect text files and perform LF normalization
+* text=auto
