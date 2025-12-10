@@ -74,6 +74,9 @@ El bot necesita los siguientes permisos en tu servidor:
 - ✅ Hablar (Speak)
 - ✅ Usar comandos de aplicación (Use Application Commands)
 
+### token del bot de discord
+- para que te funione aparte tienes que irte al .env y pone el token de tu bot a parte del server ID de discord 
+
 ### Configurar el ID del Servidor
 
 En `Main.py`, línea 66, reemplaza el `guild_id` con el ID de tu servidor:
