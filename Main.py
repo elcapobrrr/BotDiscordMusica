@@ -1950,7 +1950,7 @@ async def play_from_message(message, url):
                      
                      for q in queries:
                          # Añadir objetos light a la cola
-                         queue["tracks"].append({"title": q, "webpage_url": f"ytsearch:{q}", "duration": 0, "thumbnail": None})
+                         queue["tracks"].append({"title": q, "webpage_url": f":{q}", "duration": 0, "thumbnail": None})
                     
                      # Si no suena nada, arrancar
                      if not voice.is_playing() and not voice.is_paused():
