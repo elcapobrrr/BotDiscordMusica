@@ -1,347 +1,253 @@
-09/12/2025 : 22:28 
+# 🎵 Tune Flow - Discord Music Bot
 
-# Bot de Música para Discord
+Bot de música avanzado para Discord con reproducción de alta calidad, playlists personalizadas, autoplay inteligente y una interfaz visual impresionante.
 
-Bot de música para Discord que permite reproducir audio desde YouTube en canales de voz. Desarrollado con Python, discord.py y yt-dlp.
-
-## 📋 Características
-
-- ✅ Reproducción de audio desde YouTube
-- ✅ Comandos slash (/) para fácil uso
-- ✅ Control de reproducción (play, pause, resume, stop)
-- ✅ Gestión de conexión a canales de voz
-- ✅ Sistema de guardado de sources para pausar/reanudar sin perder el audio
-- ✅ Logging detallado para debugging
-- ✅ Manejo robusto de errores con fallback automático
-
-## 🔧 Requisitos Previos
-
-### Software Necesario
-
-1. **Python 3.8 o superior**
-   - Descarga desde: https://www.python.org/downloads/
-
-** OBLIGATORIO ** 
-2. **FFmpeg**
-   - Descarga desde: https://www.gyan.dev/ffmpeg/builds/
-   - Extrae los archivos en la carpeta `ffmpeg/` del proyecto
-   - El bot busca FFmpeg en: `E:\python\Bot_Musica\ffmpeg\bin\ffmpeg.exe` -- en mi caso en el tuyo en la carpeta que tu tengas el bot
-   - Si tu ruta es diferente, modifica la ruta en `Main.py`
-
-### Librerías de Python
-** OBLIGATORIO ** 
-Las siguientes librerías se instalan automáticamente con `requirements.txt`:
-
-- `discord.py>=2.3.0` - Librería para interactuar con Discord
-- `yt-dlp>=2023.10.0` - Extracción de audio desde YouTube
-- `python-dotenv>=1.0.0` - Gestión de variables de entorno
-- `PyNaCl>=1.5.0` - Requerido para audio en Discord
-
-## 📦 Instalación
-
-1. **Clona o descarga el proyecto**
-
-2. **Instala las dependencias de Python:**
-   ```power shell
-   pip install -r requirements.txt
-   ```
-
-3. **Configura FFmpeg:**
-   - Descarga FFmpeg desde el enlace anterior
-   - Extrae los archivos en la carpeta `ffmpeg/` del proyecto
-   - Asegúrate de que la ruta `ffmpeg/bin/ffmpeg.exe` exista ** Importante ** 
-
-4. **Configura el token del bot:**
-   - Crea un archivo `.env` en la raíz del proyecto
-   - Agrega tu token de Discord:
-     ```
-     DISCORD_TOKEN=tu_token_aqui -- Tienes que poner el token despues del = 
-     ```
-
-## ⚙️ Configuración
-
-### Obtener Token de Discord
-
-1. Ve a https://discord.com/developers/applications
-2. Crea una nueva aplicación o selecciona una existente
-3. Ve a la sección "Bot"
-4. Copia el token y pégalo en tu archivo `.env`
-
-### Permisos del Bot
-
-El bot necesita los siguientes permisos en tu servidor:
-- ✅ Conectar (Connect)
-- ✅ Hablar (Speak)
-- ✅ Usar comandos de aplicación (Use Application Commands)
-
-### token del bot de discord
-- para que te funione aparte tienes que irte al .env y pone el token de tu bot a parte del server ID de discord 
-
-### Configurar el ID del Servidor
-
-En `Main.py`, línea 66, reemplaza el `guild_id` con el ID de tu servidor:
-
-```python
-guild_id = 1375862077020831774  # Reemplaza con el ID de tu servidor de discord
-```
-
-Para obtener el ID de tu servidor:
-1. Activa el modo desarrollador en Discord (Configuración > Avanzado > Modo desarrollador)
-2. Click derecho en tu servidor > Copiar ID
-
-### Cambiar la Ruta de FFmpeg
-
-Si FFmpeg está en otra ubicación, modifica las rutas en `Main.py`:
-- Línea 132: `executable="E:\\python\\Bot_Musica\\ffmpeg\\bin\\ffmpeg.exe"`
-- Línea 139: `executable="E:\\python\\Bot_Musica\\ffmpeg\\bin\\ffmpeg.exe"`
-- Línea 148: `executable="E:\\python\\Bot_Musica\\ffmpeg\\bin\\ffmpeg.exe"`
-- Línea 216: `executable="E:\\python\\Bot_Musica\\ffmpeg\\bin\\ffmpeg.exe"`
-- Línea 222: `executable="E:\\python\\Bot_Musica\\ffmpeg\\bin\\ffmpeg.exe"`
-
-## 🚀 Uso
-
-1. **Inicia el bot:**
-   ```CMD o Power Shell
-   python Main.py
-   ```
-
-2. **Invita el bot a tu servidor:**
-   - Usa el enlace de invitación con los permisos necesarios
-   - El bot se conectará y sincronizará los comandos
-
-3. **Usa los comandos en Discord:**
-   - Todos los comandos usan el prefijo `/` (comandos slash)
-
-## 📝 Comandos Disponibles
-
-### `/join`
-Une el bot a tu canal de voz actual.
-
-**Uso:** `/join`
-
-**Requisitos:**
-- Debes estar en un canal de voz
-- El bot debe tener permisos para conectarse
-
-**Ejemplo:**
-```
-/join
-```
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Discord.py](https://img.shields.io/badge/discord.py-2.0+-blue.svg)
+![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)
 
 ---
 
-### `/leave`
-Desconecta el bot del canal de voz.
+## ✨ Características Principales
 
-**Uso:** `/leave`
+### 🎧 Reproducción Multi-Plataforma
+- **YouTube** - Videos, playlists y Music
+- **Spotify** - Tracks, álbums y playlists (conversión automática a YouTube)
+- **SoundCloud** - Soporte completo
 
-**Ejemplo:**
-```
-/leave
-```
+### 🎨 Interfaz Visual Premium
+- **Carátula grande** en alta calidad
+- **GIF animado** de ecualizador en tiempo real
+- **Barra de progreso** que se actualiza cada segundo
+- **Badges dinámicos** según la fuente (Spotify, YouTube, etc.)
+- **Footer con metadata** (requester, canal, autoplay status)
 
----
+### 🤖 Autoplay Inteligente
+- **Sin repeticiones** - Algoritmo que evita reproducir la misma canción
+- **Selección aleatoria** entre 5 recomendaciones similares
+- **Notificaciones temporales** que se auto-borran
 
-### `/play`
-Reproduce música desde YouTube.
+### 💾 Sistema de Playlists
+- **Playlists Personales** - Guarda tus propias listas
+- **Playlists de Servidor** - Los admins pueden crear listas globales
+- **Favoritos** - Marca canciones con ❤️ y accede rápidamente
 
-**Uso:** `/play url:<URL_de_YouTube>`
+### 🧹 Gestión Inteligente
+- **Auto-limpieza de chat** - Cada 60s elimina mensajes antiguos del bot
+- **Rich Presence** - Muestra la canción actual en el perfil del bot
+- **Auto-desconexión** - Se desconecta tras 5 min de inactividad
 
-**Parámetros:**
-- `url` (requerido): URL del video de YouTube
-
-**Requisitos:**
-- Debes estar en un canal de voz
-- El bot se conectará automáticamente si no está conectado
-
-**Ejemplo:**
-```
-/play url:https://www.youtube.com/watch?v=dQw4w9WgXcQ
-```
-
-**Notas:**
-- Si hay una reproducción en curso, se detendrá y comenzará la nueva
-- El bot guarda el source para permitir pausar/reanudar
-- Muestra información detallada en la consola
-
----
-
-### `/pause`
-Pausa la reproducción actual.
-
-**Uso:** `/pause`
-
-**Requisitos:**
-- El bot debe estar reproduciendo audio
-
-**Ejemplo:**
-```
-/pause
-```
-
-**Notas:**
-- El audio se pausa pero no se pierde
-- Puedes reanudar con `/resume`
+### 🎛️ Controles Interactivos
+Panel de botones completo:
+- ⏮️ Anterior
+- ⏯️ Pausa/Play
+- ⏭️ Siguiente
+- 🔀 Shuffle
+- ❤️ Favorito
+- 📍 Seek (ir a tiempo específico)
+- ⏹️ Stop
 
 ---
 
-### `/resume`
-Reanuda la reproducción pausada.
+## 🚀 Instalación
 
-**Uso:** `/resume`
+### Requisitos Previos
 
-**Requisitos:**
-- El bot debe tener audio pausado o guardado
+- **Python 3.10+**
+- **FFmpeg** (para procesamiento de audio)
+- **MySQL/MariaDB** (base de datos)
 
-**Ejemplo:**
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/tu-usuario/tune-flow-bot.git
+cd tune-flow-bot
 ```
-/resume
+
+### 2. Instalar dependencias
+
+```bash
+pip install -r requirements.txt
 ```
 
-**Notas:**
-- Si el source se perdió, intenta recrearlo automáticamente
-- Funciona incluso si el bot se desconectó y reconectó
+### 3. Configurar variables de entorno
+
+Crea un archivo `.env` en la raíz del proyecto:
+
+```env
+# Discord
+DISCORD_TOKEN=tu_token_aqui
+ADMIN_ID=tu_id_de_discord
+
+# Base de Datos
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=bot_musica
+
+# FFmpeg (opcional, si no está en PATH)
+FFMPEG_PATH=ffmpeg
+
+# Spotify (opcional)
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+```
+
+### 4. Ejecutar el bot
+
+```bash
+python Main.py
+```
+
+El bot creará automáticamente las tablas de la base de datos en el primer inicio.
 
 ---
 
-### `/stop`
-Detiene completamente la reproducción.
+## 📖 Comandos
 
-**Uso:** `/stop`
+### 🎵 Reproducción y Control
 
-**Requisitos:**
-- El bot debe estar reproduciendo o pausado
+| Comando | Descripción |
+|---------|-------------|
+| `/play <url>` | Reproduce música de YouTube o Spotify |
+| `/playlist <url>` | Carga una playlist entera de YouTube |
+| `/pause` | Pausa la canción actual |
+| `/resume` | Reanuda la reproducción |
+| `/stop` | Detiene y limpia la cola |
+| `/join` | Une el bot a tu canal de voz |
+| `/leave` | Desconecta el bot |
+| `/move` | Mueve el bot sin cortar la música |
 
-**Ejemplo:**
-```
-/stop
-```
+### 📜 Listas y Favoritos
 
-**Notas:**
-- Elimina el source guardado
-- Para reproducir de nuevo, usa `/play`
+| Comando | Descripción |
+|---------|-------------|
+| `/favorites` | Reproduce tus canciones favoritas |
+| `/history` | Muestra las últimas 10 canciones |
 
-## 🏗️ Estructura del Código
+### 💾 Playlists Personales
 
-### Archivos Principales
+| Comando | Descripción |
+|---------|-------------|
+| `/save <nombre>` | Guarda la cola actual como playlist |
+| `/load <nombre>` | Carga una playlist guardada |
+| `/myplaylists` | Lista tus playlists |
+| `/delete <nombre>` | Elimina una playlist |
 
-- `Main.py` - Archivo principal con toda la lógica del bot
-- `requirements.txt` - Dependencias del proyecto
-- `.env` - Variables de entorno (crear manualmente)
-- `ffmpeg/` - Carpeta con los binarios de FFmpeg
+### 📢 Playlists de Servidor (Admin)
 
-### Componentes Principales
+| Comando | Descripción |
+|---------|-------------|
+| `/serverplaylist save <nombre>` | Guarda la cola como playlist global |
+| `/serverplaylist load <nombre>` | Carga una playlist del servidor |
+| `/serverplaylist list` | Lista playlists disponibles |
+| `/serverplaylist delete <nombre>` | Elimina una playlist global |
 
-#### Variables Globales
+### 🛡️ Configuración (Admin)
 
-- `audio_sources`: Diccionario que guarda los sources de audio por servidor
-- `YDL_OPTIONS`: Configuración para yt-dlp
-- `FFMPEG_OPTIONS`: Opciones para FFmpeg
+| Comando | Descripción |
+|---------|-------------|
+| `/setup` | Configura un canal exclusivo para música |
 
-#### Funciones
+---
 
-- `buscar_audio(url)`: Extrae información y URL del audio desde YouTube
-- `on_ready()`: Evento que se ejecuta cuando el bot está listo
-- Comandos slash: `/join`, `/leave`, `/play`, `/pause`, `/resume`, `/stop`
+## 🛠️ Tecnologías
 
-## 🔍 Logging y Debugging
+| Tecnología | Uso |
+|------------|-----|
+| **Python 3.10+** | Lenguaje principal |
+| **discord.py** | API de Discord |
+| **yt-dlp** | Extracción de audio de YouTube |
+| **FFmpeg** | Procesamiento y streaming de audio |
+| **Spotipy** | Integración con Spotify API |
+| **MySQL/MariaDB** | Persistencia de datos |
+| **mysql-connector-python** | Driver de base de datos |
 
-El bot incluye logging detallado que muestra:
+---
 
-- Información de conexión del bot
-- Sincronización de comandos
-- Procesos de reproducción (play, pause, resume, stop)
-- Información de yt-dlp (título, duración, URL)
-- Procesos de FFmpeg
-- Errores y excepciones
+## 📊 Arquitectura
 
-**Ejemplo de salida en consola:**
-```
-[PLAY] Comando ejecutado por: Usuario
-[PLAY] URL recibida: https://www.youtube.com/watch?v=...
-[YT-DLP] Buscando audio para: https://www.youtube.com/watch?v=...
-[YT-DLP] Título: Nombre del Video
-[YT-DLP] Duración: 180s
-[FFMPEG] Iniciando fuente de audio...
-[PLAY] Reproducción iniciada exitosamente
-```
+### Base de Datos
 
-## ⚠️ Solución de Problemas
+El bot utiliza MySQL con las siguientes tablas:
 
-### Error: "No supported JavaScript runtime could be found"
+- `playlists` - Playlists personales de usuarios
+- `playlist_songs` - Canciones de playlists personales
+- `server_playlists` - Playlists globales del servidor
+- `server_playlist_songs` - Canciones de playlists del servidor
+- `favorites` - Canciones favoritas por usuario
+- `guilds` - Configuración por servidor
 
-**Problema:** Advertencia de yt-dlp sobre runtime de JavaScript.
+### Flujo de Reproducción
 
-**Solución:** 
-- Esta es solo una advertencia, no un error crítico
-- El bot funcionará normalmente
-- Para eliminarla, instala Node.js (opcional)
+1. Usuario ejecuta `/play <url>`
+2. Bot detecta la plataforma (YouTube/Spotify)
+3. Si es Spotify, convierte a búsqueda de YouTube
+4. Extrae metadata con `yt-dlp`
+5. Procesa audio con `FFmpeg`
+6. Reproduce en canal de voz
+7. Actualiza embed visual en tiempo real
 
-### Error: "Probe 'native' using 'ffmpeg.exe' failed"
+---
 
-**Problema:** FFmpeg no puede analizar el stream.
+## ✨ Características Únicas
 
-**Solución:**
-- El bot tiene un fallback automático a `FFmpegPCMAudio`
-- Verifica que FFmpeg esté en la ruta correcta
-- Asegúrate de que el archivo `ffmpeg.exe` existe
+### 🎯 Autoplay Anti-Loop
+Algoritmo inteligente que:
+- Busca 5 canciones similares
+- **Descarta siempre la primera** (evita repetir)
+- Elige aleatoriamente entre las 4 restantes
+- Garantiza variedad infinita
 
-### Error: "No estoy en un canal de voz"
+### 🧹 Auto-Clean
+- Ejecuta cada 60 segundos
+- Borra mensajes antiguos del bot
+- **Preserva el reproductor activo**
+- Mantiene el chat limpio automáticamente
 
-**Problema:** El bot no está conectado a un canal.
+### 📱 Rich Presence
+- Muestra "🎵 Escuchando: [Canción]" en el perfil del bot
+- Se actualiza en tiempo real
+- Se limpia al detener la música
 
-**Solución:**
-- Usa `/join` para conectar el bot
-- O usa `/play` que conecta automáticamente
+---
 
-### El bot no responde a los comandos
+## 🎨 Capturas
 
-**Problema:** Los comandos slash no están sincronizados.
+*Próximamente*
 
-**Solución:**
-- Espera unos minutos después de iniciar el bot
-- Los comandos se sincronizan automáticamente
-- Verifica que el bot tenga permisos en el servidor
-
-### No se puede pausar/reanudar
-
-**Problema:** El source se pierde al pausar.
-
-**Solución:**
-- El código actual guarda el source automáticamente
-- Si persiste, verifica los logs en consola
-- El bot intenta recrear el source si se pierde
-
-### Error de conexión a YouTube
-
-**Problema:** No se puede obtener el audio.
-
-**Solución:**
-- Verifica tu conexión a internet
-- La URL puede ser inválida o el video puede estar restringido
-- Algunos videos pueden requerir autenticación
-
-## 🔐 Seguridad
-
-- **Nunca compartas tu token de Discord**
-- Mantén el archivo `.env` en `.gitignore`
-- No subas el token a repositorios públicos
-
-## 📄 Licencia
-
-Este proyecto es de código abierto. Úsalo y modifícalo libremente.
+---
 
 ## 🤝 Contribuciones
 
-Las contribuciones son bienvenidas. Si encuentras un bug o tienes una sugerencia, no dudes en reportarlo.
+Las contribuciones son bienvenidas. Por favor:
 
-## 📞 Soporte
-
-Si tienes problemas:
-1. Revisa la sección de solución de problemas
-2. Verifica los logs en la consola
-3. Asegúrate de tener todas las dependencias instaladas
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
 ---
 
-**Desarrollado con ❤️ usando Python y discord.py Capobrr**
+## 📝 Licencia
+
+Este proyecto está bajo la Licencia MIT.
+
+---
+
+## 📧 Contacto
+
+Para preguntas o soporte, abre un issue en GitHub.
+
+---
+
+## 🎉 Agradecimientos
+
+- [discord.py](https://github.com/Rapptz/discord.py) - Librería de Discord
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - Descarga de audio
+- [Spotipy](https://github.com/plamere/spotipy) - Spotify API
+
+---
+
+**Desarrollado con ❤️ para la comunidad de Discord**
