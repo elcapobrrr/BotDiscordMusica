@@ -11,7 +11,8 @@ import logging
 import database as db
 import random
 import requests
-import re 
+import re
+from datetime import datetime 
 
 
 load_dotenv()
@@ -72,6 +73,9 @@ if SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET:
         print("[SPOTIFY] Cliente inicializado correctamente.")
     except Exception as e:
         print(f"[SPOTIFY] Error al inicializar: {e}")
+
+
+##---------------------FUNCIONES---------------------##
 
 def is_spotify_url(text: str) -> bool:
     return "open.spotify.com" in text or text.startswith("spotify:")
@@ -294,6 +298,14 @@ def create_minimal_embed(title, url, duration, elapsed, thumbnail, requester=Non
     
     return embed
 
+
+def get_today_history(history_list):
+    """Filtra el historial para mostrar solo las canciones de hoy"""
+    today = datetime.now().date()
+    return [item for item in history_list if item.get("timestamp") and item["timestamp"].date() == today]
+
+##---------------------FIN DE LAS FUNCIONES---------------------##
+
 async def update_message_task(message, start_time, duration, title, voice_client):
     """
     Tarea en segundo plano que actualiza la barra de progreso del mensaje cada segundo.
@@ -371,6 +383,32 @@ async def clean_chat_task():
                 
     except Exception as e:
         print(f"[AUTO-CLEAN] Error general: {e}")
+
+@tasks.loop(hours=24)  # Ejecutar cada 24 horas
+async def daily_history_cleanup():
+    """Limpia el historial eliminando canciones de días anteriores."""
+    try:
+        today = datetime.now().date()
+        cleaned_guilds = 0
+        
+        for guild_id in list(music_queues.keys()):
+            if "history" in music_queues[guild_id]:
+                old_count = len(music_queues[guild_id]["history"])
+                # Filtrar solo canciones de hoy
+                music_queues[guild_id]["history"] = [
+                    item for item in music_queues[guild_id]["history"]
+                    if item.get("timestamp") and item["timestamp"].date() == today
+                ]
+                new_count = len(music_queues[guild_id]["history"])
+                
+                if old_count != new_count:
+                    cleaned_guilds += 1
+                    print(f"[HISTORY-CLEANUP] Guild {guild_id}: Limpiadas {old_count - new_count} canciones antiguas")
+        
+        if cleaned_guilds > 0:
+            print(f"[HISTORY-CLEANUP] Limpieza diaria completada. {cleaned_guilds} servidores actualizados.")
+    except Exception as e:
+        print(f"[HISTORY-CLEANUP] Error en limpieza diaria: {e}")
 
 disconnect_tasks = {} # Tareas de desconexión por guild
 
@@ -688,7 +726,8 @@ async def play_track_in_guild(guild: discord.Guild, track: dict, start_offset=0)
         hist = music_queues[guild.id]["history"]
         # Guardar URL original para el historial, no el stream
         hist_url = track.get("webpage_url", stream_url)
-        hist.insert(0, {"title": real_title, "url": hist_url})
+        hist.insert(0, {"title": real_title, "url": hist_url, "timestamp": 
+        datetime.now()})
         if len(hist) > 15: hist.pop() # Máximo 15
 
     # Opciones de FFmpeg con offset
@@ -1027,13 +1066,32 @@ async def on_ready():
         if not clean_chat_task.is_running():
              clean_chat_task.start()
              print("Tarea de auto-limpieza iniciada.")
+        
+        if not daily_history_cleanup.is_running():
+             # Calcular cuánto falta para medianoche y empezar ahí
+             now = datetime.now()
+             midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+             # Si ya pasó medianoche hoy, programar para mañana
+             if now >= midnight:
+                 from datetime import timedelta
+                 midnight += timedelta(days=1)
+             
+             # Calcular segundos hasta medianoche
+             seconds_until_midnight = (midnight - now).total_seconds()
+             print(f"Historial se limpiará en {seconds_until_midnight/3600:.1f} horas (a las 00:00)")
+             
+             # Iniciar la tarea (se ejecutará cada 24h desde ahora)
+             daily_history_cleanup.start()
+             print("Tarea de limpieza de historial iniciada.")
              
         synced = await bot.tree.sync() # Sincroniza los comandos slash
         print(f"Sincronizados {len(synced)} comandos globalmente")
     except Exception as e:
         print(f"Error al sincronizar comandos: {e}")
 
-    guild_id = #1368215601125789847  # Reemplaza con el ID de tu servidor
+
+    # guild_id = 1368215601125789847  # Reemplaza con el ID de tu servidor
+
     guild = discord.Object(id=guild_id)
     bot.tree.copy_global_to(guild=guild) # Copia los comandos globales al servidor
     synced_guild = await bot.tree.sync(guild=guild) # Sincroniza los comandos al servidor
@@ -1242,22 +1300,37 @@ async def playlist(interaction: discord.Interaction, url: str):
         except Exception as e:
             print(f"Error UI Playlist: {e}")
 
-@bot.tree.command(name="history", description="Muestra las últimas 10 canciones reproducidas")
+@bot.tree.command(name="history", description="Muestra las canciones reproducidas hoy")
 async def historial(interaction: discord.Interaction):
     q = music_queues.get(interaction.guild.id)
     if not q or not q["history"]:
         return await interaction.response.send_message("El historial está vacío.", ephemeral=True)
-        
-    embed = discord.Embed(title="📜 Historial de Reproducción", color=discord.Color.gold())
+    
+    # Filtrar solo canciones de hoy
+    today_history = get_today_history(q["history"])
+    
+    if not today_history:
+        return await interaction.response.send_message("📭 No has escuchado nada hoy todavía.", ephemeral=True)
+    
+    # Formatear fecha de hoy
+    today_date = datetime.now().strftime("%d/%m/%Y")
+    embed = discord.Embed(
+        title=f"📜 Historial de Hoy ({today_date})",
+        color=discord.Color.gold()
+    )
     
     desc = ""
-    # Mostrar solo las últimas 15
-    recent_history = q["history"][-15:]
+    # Mostrar las canciones de hoy (máximo 15 para no saturar)
+    display_history = today_history[:15]
     
-    for i, item in enumerate(recent_history):
-        desc += f"**{i+1}.** [{item['title']}]({item['url']})\n"
-        
+    for i, item in enumerate(display_history, 1):
+        desc += f"**{i}.** [{item['title']}]({item['url']})\n"
+    
+    if len(today_history) > 15:
+        desc += f"\n*... y {len(today_history) - 15} más*"
+    
     embed.description = desc
+    embed.set_footer(text=f"Total de canciones hoy: {len(today_history)}")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
