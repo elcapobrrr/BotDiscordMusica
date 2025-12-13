@@ -458,3 +458,24 @@ def get_favorites(user_id: int):
         return [{"title": r[0], "webpage_url": r[1], "duration": r[2], "thumbnail": r[3]} for r in rows]
     finally:
         conn.close()
+
+def remove_favorite(user_id: int, track: dict):
+    """Elimina una canción de favoritos."""
+    conn = get_connection()
+    if not conn: return False, "Error DB"
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            DELETE FROM favorites 
+            WHERE user_id = %s AND url = %s
+        """, (user_id, track["webpage_url"]))
+        
+        conn.commit()
+        if cursor.rowcount > 0:
+            return True, "Canción eliminada de favoritos."
+        else:
+            return False, "Esa canción no estaba en tus favoritos."
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()

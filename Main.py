@@ -791,12 +791,17 @@ async def play_next(guild: discord.Guild):
     queue["index"] += 1
 
     # Verificar si hay más canciones
-    # Verificar si hay más canciones
+    # IMPORTANTE: Si la cola está vacía (Stop), no hacer autoplay
     if queue["index"] >= len(queue["tracks"]):
+        # Verificar si la cola tiene tracks (si fue vaciada con Stop, no hacer autoplay)
+        if len(queue["tracks"]) == 0:
+            print("[AUTOPLAY] Cola vacía (probablemente Stop). No se activa autoplay.")
+            return
+        
         # FIN DE LA COLA -> AUTOPLAY INTELIGENTE
         print("[AUTOPLAY] Cola terminada. Buscando recomendación...")
         
-        # Notificar al usuario
+        # N otificar al usuario
         channel = queue.get("channel")
         autoplay_msg = None
         if channel:
@@ -972,100 +977,6 @@ async def play_next(guild: discord.Guild):
              if channel:
                  await channel.send("✅ Fin de la cola de reproducción.") 
 
-class PlayerView(discord.ui.View):
-    def __init__(self, guild_id: int):
-        super().__init__(timeout=None)
-        self.guild_id = guild_id
-
-    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()  # Responder PRIMERO
-        
-        queue = music_queues.get(self.guild_id)
-        if not queue:
-            return await interaction.channel.send("No hay cola activa.", delete_after=3)
-
-        voice = interaction.guild.voice_client
-        if voice is None:
-            return await interaction.channel.send("No estoy en un canal de voz.", delete_after=3)
-
-        # Queremos ir al anterior.
-        # play_next incrementa +1.
-        # Si queremos index - 1, necesitamos settear index - 2.
-        new_index = queue["index"] - 2
-        
-        # Validar límites
-        if new_index < -1: 
-            # Si estamos en 0 (index=0), new_index=-2. play_next hará -2+1=-1 (invalido).
-            # Loop al final? O nos quedamos en el inicio?
-            # Comportamiento simple: Si estamos en el principio, reiniciar la canción.
-            new_index = -1 
-        
-        queue["index"] = new_index
-        
-        # Detener la música actual disparará after_playing -> play_next
-        if voice.is_playing() or voice.is_paused():
-            voice.stop()
-        else:
-            # Si no suena nada, forzamos play_next manualmente
-            await play_next(interaction.guild)
-
-        await interaction.channel.send("⏮️ Retrocediendo...", delete_after=3)
-
-    @discord.ui.button(emoji="⏯️", style=discord.ButtonStyle.secondary)
-    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()  # Responder PRIMERO
-        
-        voice = interaction.guild.voice_client
-        if not voice:
-            return await interaction.channel.send("No estoy en un canal de voz.", delete_after=3)
-
-        if voice.is_playing():
-            voice.pause()
-            txt = "⏸️ Pausado."
-        elif voice.is_paused():
-            voice.resume()
-            txt = "▶️ Reanudado."
-        else:
-            txt = "No hay nada reproduciéndose."
-
-        await interaction.channel.send(txt, delete_after=3)
-
-    @discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary)
-    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()  # Responder PRIMERO
-        
-        queue = music_queues.get(self.guild_id)
-        if not queue:
-            return await interaction.channel.send("No hay cola activa.", delete_after=3)
-
-        voice = interaction.guild.voice_client
-        if voice is None:
-            return await interaction.channel.send("No estoy en un canal de voz.", delete_after=3)
-
-        # play_next incrementa +1 automáticamente.
-        # Si queremos ir al siguiente, simplemente paramos el actual.
-        # El índice actual ya es correcto. play_next hará index + 1.
-        
-        if voice.is_playing() or voice.is_paused():
-            voice.stop()
-        else:
-            await play_next(interaction.guild)
-
-        await interaction.channel.send("⏭️ Saltando...", delete_after=3)
-
-    @discord.ui.button(emoji="⏹️", style=discord.ButtonStyle.secondary)
-    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        voice = interaction.guild.voice_client
-        if not voice:
-            return await interaction.response.send_message("No estoy en un canal de voz.", ephemeral=False, delete_after=3)
-
-        if voice.is_playing() or voice.is_paused():
-            voice.stop()
-
-        audio_sources.pop(self.guild_id, None)
-        music_queues.pop(self.guild_id, None)
-
-        await interaction.response.send_message("⏹️ Detenido.", ephemeral=False)
 
 
 
@@ -1516,23 +1427,31 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(emoji="⏮️", style=discord.ButtonStyle.secondary, row=0)
     async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("⏮️ Retrocediendo canción...", ephemeral=True)
+        await interaction.response.defer()
         
         queue = music_queues.get(self.guild_id)
-        if not queue: return
-        voice = interaction.guild.voice_client
+        if not queue: 
+            return await interaction.channel.send("No hay cola.", delete_after=3)
         
+        voice = interaction.guild.voice_client
         new_index = queue["index"] - 2
         if new_index < -1: new_index = -1
         queue["index"] = new_index
         
-        if voice.is_playing() or voice.is_paused(): voice.stop()
-        else: await play_next(interaction.guild)
+        if voice and (voice.is_playing() or voice.is_paused()): 
+            voice.stop()
+        else: 
+            await play_next(interaction.guild)
+        
+        await interaction.channel.send("⏮️ Retrocediendo...", delete_after=3)
 
     @discord.ui.button(emoji="⏯️", style=discord.ButtonStyle.success, row=0)
     async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        
         voice = interaction.guild.voice_client
-        if not voice: return await interaction.response.send_message("No estoy conectado.", ephemeral=True)
+        if not voice: 
+            return await interaction.channel.send("No estoy conectado.", delete_after=3)
         
         if voice.is_playing():
             voice.pause()
@@ -1540,55 +1459,83 @@ class PlayerView(discord.ui.View):
         elif voice.is_paused():
             voice.resume()
             txt = "▶️ Reanudado."
-        else: txt = "Nada sonando."
-        await interaction.response.send_message(txt, ephemeral=True)
+        else: 
+            txt = "Nada sonando."
+        
+        await interaction.channel.send(txt, delete_after=3)
 
     @discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary, row=0)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Respondemos PRIMERO
-        await interaction.response.send_message("⏭️ Saltando...", ephemeral=True)
+        await interaction.response.defer()
         
         queue = music_queues.get(self.guild_id)
-        if not queue: return
+        if not queue: 
+            return await interaction.channel.send("No hay cola.", delete_after=3)
+        
         voice = interaction.guild.voice_client
-        if voice.is_playing() or voice.is_paused(): voice.stop()
-        else: await play_next(interaction.guild)
+        if voice and (voice.is_playing() or voice.is_paused()): 
+            voice.stop()
+        else: 
+            await play_next(interaction.guild)
+        
+        await interaction.channel.send("⏭️ Saltando...", delete_after=3)
 
     @discord.ui.button(emoji="🔀", style=discord.ButtonStyle.secondary, row=0)
     async def shuffle_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        
         queue = music_queues.get(self.guild_id)
-        if not queue: return await interaction.response.send_message("No hay cola.", ephemeral=True)
+        if not queue: 
+            return await interaction.channel.send("No hay cola.", delete_after=3)
         
         current_idx = queue["index"]
-        # Si estamos al final, no hay nada que mezclar
         if current_idx >= len(queue["tracks"]) - 1:
-             return await interaction.response.send_message("⚠️ No hay canciones siguientes para mezclar.", ephemeral=True)
-             
-        # Separar: Lo ya sonado+actual VS Lo que viene
+            return await interaction.channel.send("⚠️ No hay canciones siguientes para mezclar.", delete_after=3)
+        
         current_and_past = queue["tracks"][:current_idx+1]
         upcoming = queue["tracks"][current_idx+1:]
-        
         random.shuffle(upcoming)
-        
         queue["tracks"] = current_and_past + upcoming
-        await interaction.response.send_message("🔀 Cola mezclada (próximas canciones).", ephemeral=True)
+        
+        await interaction.channel.send("🔀 Cola mezclada.", delete_after=3)
 
     @discord.ui.button(emoji="❤️", style=discord.ButtonStyle.secondary, row=0)
-    async def love_song(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Guardar en favoritos la canción actual
+    async def toggle_favorite(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        
         if self.guild_id not in audio_sources: 
-            return await interaction.response.send_message("No está sonando nada.", ephemeral=True)
+            return await interaction.channel.send("No está sonando nada.", delete_after=3)
         
         info = audio_sources[self.guild_id]
         track = {
             "title": info["title"],
             "webpage_url": info["url"],
-            "duration": info.get("duration", 0),  # Usar .get() para evitar KeyError
+            "duration": info.get("duration", 0),
             "thumbnail": info.get("thumbnail")
         }
         
-        success, msg = db.save_favorite(interaction.user.id, track)
-        await interaction.response.send_message(f"❤️ {msg}", ephemeral=True)
+        # Verificar si ya está en favoritos
+        favs = db.get_favorites(interaction.user.id)
+        
+        # Debug logging
+        print(f"[FAVORITE_TOGGLE] URL actual: {track['webpage_url']}")
+        print(f"[FAVORITE_TOGGLE] Favoritos del user {interaction.user.id}: {len(favs)} canciones")
+        for f in favs:
+            print(f"  - {f['webpage_url']}")
+        
+        is_favorited = any(f["webpage_url"] == track["webpage_url"] for f in favs)
+        print(f"[FAVORITE_TOGGLE] ¿Está en favoritos? {is_favorited}")
+        
+        if is_favorited:
+            # Quitar de favoritos
+            success, msg = db.remove_favorite(interaction.user.id, track)
+            print(f"[FAVORITE_TOGGLE] Resultado de remove: success={success}, msg={msg}")
+            await interaction.channel.send(f"💔 {msg}", delete_after=3)
+        else:
+            # Agregar a favoritos
+            success, msg = db.save_favorite(interaction.user.id, track)
+            print(f"[FAVORITE_TOGGLE] Resultado de save: success={success}, msg={msg}")
+            await interaction.channel.send(f"❤️ {msg}", delete_after=3)
 
     @discord.ui.button(emoji="📍", label="Ir a...", style=discord.ButtonStyle.secondary, row=1)
     async def seek_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1596,12 +1543,19 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(emoji="⏹️", style=discord.ButtonStyle.danger, row=1)
     async def stop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-         await interaction.response.send_message("⏹️ Stop.", ephemeral=True)
-         # Lógica stop
-         voice = interaction.guild.voice_client
-         if voice: voice.stop()
-         if interaction.guild.id in music_queues:
-             music_queues[interaction.guild.id]["tracks"] = []
+        await interaction.response.defer()
+        
+        voice = interaction.guild.voice_client
+        if voice: 
+            voice.stop()
+        
+        # Limpiar cola completamente para evitar autoplay
+        if interaction.guild.id in music_queues:
+            music_queues[interaction.guild.id]["tracks"] = []
+            music_queues[interaction.guild.id]["index"] = 0
+        
+        audio_sources.pop(interaction.guild.id, None)
+        await interaction.channel.send("⏹️ Detenido.", delete_after=3)
 
 
 @bot.tree.command(name="favorites", description="Reproduce tus canciones favoritas")
