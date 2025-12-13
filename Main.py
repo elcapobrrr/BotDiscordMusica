@@ -29,6 +29,9 @@ audio_sources = {}
 
 music_queues = {}
 
+# Rate limiting: último timestamp de mensaje por usuario
+user_last_message = {}  # {user_id: timestamp}
+
 # Configurar logging a consola y archivo
 logging.basicConfig(
     level=logging.INFO,
@@ -805,44 +808,89 @@ async def play_next(guild: discord.Guild):
             last_track = queue["tracks"][-1]
             last_title = last_track.get("title", "")
             
-            # Limpiar título básico (quitar (Official Video) etc)
-            # Limpiar título básico (quitar (Official Video) etc)
-            clean_title = last_title.split("(")[0].split("[")[0].strip()
-            search_query = f"{clean_title} official audio" # Búsqueda un poco más específica
+            # Limpiar título de forma más agresiva para mejores resultados
+            import re
             
-            print(f"[AUTOPLAY] Buscando recomendaciones para: {clean_title}...")
+            # Quitar paréntesis, corchetes y su contenido
+            clean_title = re.sub(r'[\(\[].*?[\)\]]', '', last_title)
+            
+            # Quitar palabras comunes que no ayudan en la búsqueda
+            remove_words = ['official', 'video', 'audio', 'visualizer', 'lyric', 'lyrics', 
+                           'feat', 'ft', 'prod', 'music', 'mv', 'hd', 'hq', '4k']
+            for word in remove_words:
+                clean_title = re.sub(rf'\b{word}\b', '', clean_title, flags=re.IGNORECASE)
+            
+            # Quitar caracteres especiales excepto letras, números y espacios
+            clean_title = re.sub(r'[^\w\s]', ' ', clean_title)
+            
+            # Quitar espacios múltiples
+            clean_title = ' '.join(clean_title.split())
+            
+            # Tomar solo las primeras 3-4 palabras para búsqueda más amplia
+            words = clean_title.split()[:4]
+            search_query = ' '.join(words)
+            
+            print(f"[AUTOPLAY] Título original: {last_title}")
+            print(f"[AUTOPLAY] Buscando recomendaciones para: {search_query}")
 
             # Buscar 5 resultados y SIEMPRE elegir uno diferente
             # Lógica personalizada inline para no romper buscar_audio estándar
             def get_recommendation(query):
-                with YoutubeDL({"format": "bestaudio", "noplaylist": True, "quiet": True}) as ydl_rec:
+                with YoutubeDL({"format": "bestaudio", "noplaylist": True, "quiet": False}) as ydl_rec:
                    try:
-                       # Buscar 5 videos
-                       info_rec = ydl_rec.extract_info(f"ytsearch5:{query}", download=False)
-                       if "entries" in info_rec:
-                           entries = info_rec["entries"]
-                           if not entries or len(entries) == 0:
-                               return None
-                           
-                           # Filtrar válidos
-                           valid = [e for e in entries if e]
-                           if not valid:
-                               return None
-                           
-                           # ESTRATEGIA: Saltar SIEMPRE el primero (es la misma canción)
-                           # Si hay más de 1, elegir uno aleatorio del resto
-                           if len(valid) > 1:
-                               # Elegir random entre índices 1-4
-                               import random
-                               chosen = random.choice(valid[1:])
-                           else:
-                               # Solo hay 1, devolver ese (fallback)
-                               chosen = valid[0]
-                           
-                           return chosen.get("url"), chosen.get("title"), chosen.get("duration"), chosen.get("thumbnail"), chosen.get("webpage_url")
+                        # Buscar 5 videos
+                        print(f"[AUTOPLAY] Buscando: ytsearch5:{query}")
+                        info_rec = ydl_rec.extract_info(f"ytsearch5:{query}", download=False)
+                        
+                        if "entries" not in info_rec:
+                            print("[AUTOPLAY] No se encontró 'entries' en la respuesta")
+                            return None
+                            
+                        entries = info_rec["entries"]
+                        print(f"[AUTOPLAY] Encontrados {len(entries) if entries else 0} resultados")
+                        
+                        if not entries or len(entries) == 0:
+                            print("[AUTOPLAY] Lista de entries vacía")
+                            return None
+                        
+                        # Filtrar válidos
+                        valid = [e for e in entries if e]
+                        print(f"[AUTOPLAY] {len(valid)} videos válidos después del filtro")
+                        
+                        if not valid:
+                            print("[AUTOPLAY] No hay videos válidos")
+                            return None
+                        
+                        # ESTRATEGIA: Saltar SIEMPRE el primero (es la misma canción)
+                        # Si hay más de 1, elegir uno aleatorio del resto
+                        import random
+                        candidates = valid[1:] if len(valid) > 1 else valid
+                        
+                        # Protección: asegurarse de que hay candidatos
+                        if not candidates or len(candidates) == 0:
+                            print("[AUTOPLAY] No hay candidatos disponibles después de saltar el primero")
+                            return None
+                        
+                        print(f"[AUTOPLAY] {len(candidates)} candidatos disponibles")
+                        random.shuffle(candidates)
+                        
+                        # Simplificado: tomar el primero de los candidatos sin re-validar
+                        # El extract_info inicial ya descartó videos inaccesibles
+                        chosen = candidates[0]
+                        
+                        if not chosen or not chosen.get("url"):
+                            print("[AUTOPLAY] Candidato elegido inválido")
+                            return None
+                        
+                        print(f"[AUTOPLAY] Seleccionado: {chosen.get('title')}")
+                        return (chosen.get("url"), chosen.get("title"), chosen.get("duration"), 
+                                chosen.get("thumbnail"), chosen.get("webpage_url"))
+                        
                    except Exception as e:
-                       print(f"[AUTOPLAY_SEARCH] Error: {e}")
-                       return None
+                        print(f"[AUTOPLAY_SEARCH] Error en búsqueda: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        return None
                 return None
 
             res = await bot.loop.run_in_executor(None, lambda: get_recommendation(search_query))
@@ -924,28 +972,21 @@ async def play_next(guild: discord.Guild):
              if channel:
                  await channel.send("✅ Fin de la cola de reproducción.") 
 
-
-
-
-
-
-
-
-
-
 class PlayerView(discord.ui.View):
     def __init__(self, guild_id: int):
         super().__init__(timeout=None)
         self.guild_id = guild_id
 
     async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()  # Responder PRIMERO
+        
         queue = music_queues.get(self.guild_id)
         if not queue:
-            return await interaction.response.send_message("No hay cola activa.", ephemeral=True)
+            return await interaction.channel.send("No hay cola activa.", delete_after=3)
 
         voice = interaction.guild.voice_client
         if voice is None:
-            return await interaction.response.send_message("No estoy en un canal de voz.", ephemeral=True)
+            return await interaction.channel.send("No estoy en un canal de voz.", delete_after=3)
 
         # Queremos ir al anterior.
         # play_next incrementa +1.
@@ -968,13 +1009,15 @@ class PlayerView(discord.ui.View):
             # Si no suena nada, forzamos play_next manualmente
             await play_next(interaction.guild)
 
-        await interaction.response.send_message("⏮️ Retrocediendo...", ephemeral=True)
+        await interaction.channel.send("⏮️ Retrocediendo...", delete_after=3)
 
     @discord.ui.button(emoji="⏯️", style=discord.ButtonStyle.secondary)
     async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()  # Responder PRIMERO
+        
         voice = interaction.guild.voice_client
         if not voice:
-            return await interaction.response.send_message("No estoy en un canal de voz.", ephemeral=True)
+            return await interaction.channel.send("No estoy en un canal de voz.", delete_after=3)
 
         if voice.is_playing():
             voice.pause()
@@ -985,17 +1028,19 @@ class PlayerView(discord.ui.View):
         else:
             txt = "No hay nada reproduciéndose."
 
-        await interaction.response.send_message(txt, ephemeral=True)
+        await interaction.channel.send(txt, delete_after=3)
 
     @discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()  # Responder PRIMERO
+        
         queue = music_queues.get(self.guild_id)
         if not queue:
-            return await interaction.response.send_message("No hay cola activa.", ephemeral=True)
+            return await interaction.channel.send("No hay cola activa.", delete_after=3)
 
         voice = interaction.guild.voice_client
         if voice is None:
-            return await interaction.response.send_message("No estoy en un canal de voz.", ephemeral=True)
+            return await interaction.channel.send("No estoy en un canal de voz.", delete_after=3)
 
         # play_next incrementa +1 automáticamente.
         # Si queremos ir al siguiente, simplemente paramos el actual.
@@ -1006,13 +1051,13 @@ class PlayerView(discord.ui.View):
         else:
             await play_next(interaction.guild)
 
-        await interaction.response.send_message("⏭️ Saltando...", ephemeral=True)
+        await interaction.channel.send("⏭️ Saltando...", delete_after=3)
 
     @discord.ui.button(emoji="⏹️", style=discord.ButtonStyle.secondary)
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         voice = interaction.guild.voice_client
         if not voice:
-            return await interaction.response.send_message("No estoy en un canal de voz.", ephemeral=True)
+            return await interaction.response.send_message("No estoy en un canal de voz.", ephemeral=False, delete_after=3)
 
         if voice.is_playing() or voice.is_paused():
             voice.stop()
@@ -1908,6 +1953,28 @@ async def on_message(message):
                 return
             
         if is_valid_link:
+            # RATE LIMITING: Verificar que el usuario no esté enviando enlaces muy rápido
+            current_time = time.time()
+            user_id = message.author.id
+            
+            if user_id in user_last_message:
+                time_since_last = current_time - user_last_message[user_id]
+                if time_since_last < 5:  # Menos de 5 segundos
+                    # Usuario está spammeando
+                    try:
+                        await message.delete()
+                    except:
+                        pass
+                    remaining = int(5 - time_since_last) + 1
+                    await message.channel.send(
+                        f"{message.author.mention} ⏱️ **Espera {remaining}s antes de enviar otro enlace.**",
+                        delete_after=3
+                    )
+                    return
+            
+            # Actualizar timestamp SOLO si el enlace es válido
+            user_last_message[user_id] = current_time
+            
             # AUTO-PLAY: Si el enlace es válido, intentamos reproducirlo
             # Verificar si el usuario está en voz
             if message.author.voice and message.author.voice.channel:
@@ -1969,11 +2036,22 @@ async def play_from_message(message, url):
                 queries = get_spotify_queries(url)
                 if not queries: return await message.channel.send("❌ Enlace de Spotify vacío o inválido.", delete_after=5)
 
+
                 if len(queries) == 1:
-                     # Single track
+                     # Single track - borrar mensaje original inmediatamente
+                     try:
+                         await message.delete()
+                     except:
+                         pass
                      url = f"ytsearch:{queries[0]}"
                 else:
                      # Playlist
+                     # Borrar mensaje original del enlace primero
+                     try:
+                         await message.delete()
+                     except:
+                         pass
+                         
                      msg = await message.channel.send(f"🎶 Añadiendo {len(queries)} canciones de Spotify...")
                      await asyncio.sleep(2)
                      await msg.delete()
